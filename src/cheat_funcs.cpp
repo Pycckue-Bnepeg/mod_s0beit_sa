@@ -2,9 +2,9 @@
 
 	PROJECT:		mod_sa
 	LICENSE:		See LICENSE in the top level directory
-	COPYRIGHT:		Copyright we_sux, FYP
+	COPYRIGHT:		Copyright we_sux, BlastHack
 
-	mod_sa is available from http://code.google.com/p/m0d-s0beit-sa/
+	mod_sa is available from https://github.com/BlastHackNet/mod_s0beit_sa/
 
 	mod_sa is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -476,7 +476,7 @@ int isBadPtr_GTA_pVehicle ( vehicle_info *p_VehicleInfo )
 			)
 		)
 		return 1;
-	return ( p_VehicleInfo->base.matrix == NULL );
+	return ( p_VehicleInfo->base.matrix == NULL ) || (p_VehicleInfo->base.nType != ENTITY_TYPE_VEHICLE);
 }
 
 int isBadPtr_GTA_pVehicle ( CVehicle *p_CVehicle )
@@ -493,7 +493,7 @@ int isBadPtr_GTA_pVehicle ( CVehicle *p_CVehicle )
 			)
 		)
 		return 1;
-	return ( p_CVehicleSAInterface->Placeable.matrix == NULL );
+	return ( p_CVehicleSAInterface->Placeable.matrix == NULL ) || (p_CVehicleSAInterface->nType != ENTITY_TYPE_VEHICLE);
 }
 
 int isBadPtr_GTA_pVehicle ( CVehicleSA *p_CVehicleSA )
@@ -510,7 +510,7 @@ int isBadPtr_GTA_pVehicle ( CVehicleSA *p_CVehicleSA )
 			)
 		)
 		return 1;
-	return ( p_CVehicleSAInterface->Placeable.matrix == NULL );
+	return ( p_CVehicleSAInterface->Placeable.matrix == NULL ) || (p_CVehicleSAInterface->nType != ENTITY_TYPE_VEHICLE);
 }
 
 int isBadPtr_GTA_pVehicle ( CVehicleSAInterface *p_CVehicleSAInterface )
@@ -524,7 +524,7 @@ int isBadPtr_GTA_pVehicle ( CVehicleSAInterface *p_CVehicleSAInterface )
 			)
 		)
 		return 1;
-	return ( p_CVehicleSAInterface->Placeable.matrix == NULL );
+	return ( p_CVehicleSAInterface->Placeable.matrix == NULL ) || (p_CVehicleSAInterface->nType != ENTITY_TYPE_VEHICLE);
 }
 
 int isBadPtr_GTA_pPed ( actor_info *pActorInfo )
@@ -538,7 +538,7 @@ int isBadPtr_GTA_pPed ( actor_info *pActorInfo )
 			)
 		)
 		return 1;
-	return ( pActorInfo->base.matrix == NULL );
+	return (pActorInfo->base.matrix == NULL) || (pActorInfo->base.nType != ENTITY_TYPE_PED);
 }
 
 int isBadPtr_GTA_pPed ( CPed *pCPed )
@@ -553,7 +553,7 @@ int isBadPtr_GTA_pPed ( CPed *pCPed )
 			)
 		)
 		return 1;
-	return ( pCPedSAInterface->Placeable.matrix == NULL );
+	return ( pCPedSAInterface->Placeable.matrix == NULL ) || (pCPedSAInterface->nType != ENTITY_TYPE_PED);
 }
 
 int isBadPtr_GTA_pPed ( CPedSAInterface *pCPedSAInterface )
@@ -567,7 +567,7 @@ int isBadPtr_GTA_pPed ( CPedSAInterface *pCPedSAInterface )
 			)
 		)
 		return 1;
-	return ( pCPedSAInterface->Placeable.matrix == NULL );
+	return ( pCPedSAInterface->Placeable.matrix == NULL ) || (pCPedSAInterface->nType != ENTITY_TYPE_PED);
 }
 
 int isBadPtr_GTA_pBuildingInfo ( DWORD p_BuildingInfo )
@@ -784,13 +784,16 @@ void gta_weapon_set ( struct actor_info *info, int slot, int id, int ammo, int a
 		Log( "invalid weapon slot %d!", slot );
 		return;
 	}
+	if (id < WEAPONTYPE_UNARMED || id >= WEAPONTYPE_LAST_WEAPONTYPE)
+	{
+		Log("invalid weapon id %d!", id);
+		return;
+	}
 
-	if ( id >= 0 )
-		info->weapon[slot].id = id;
-	if ( ammo >= 0 )
-		info->weapon[slot].ammo = ammo;
-	if ( ammo_clip >= 0 )
-		info->weapon[slot].ammo_clip = ammo_clip;
+	// less optimized, but more secure way
+	CWeapon *weap = pPedSelf->GiveWeapon(eWeaponType(id), 1);
+	weap->SetAmmoTotal(ammo);
+	weap->SetAmmoInClip(ammo_clip);
 }
 
 int gta_weapon_ammo_set ( struct actor_info *info, int slot, int ammo )
@@ -1321,7 +1324,7 @@ int vehicle_find_nearest ( int flags )
 		if ( g_SAMP != NULL )
 		{
 			int iVehicleSAMPID = getSAMPVehicleIDFromGTAVehicle( info );
-			if ( isBadPtr_SAMP_iVehicleID(iVehicleSAMPID) )
+			if ( isBadSAMPVehicleID(iVehicleSAMPID) )
 				continue;
 		}
 
@@ -1387,6 +1390,11 @@ int vehicle_filter_flags ( vehicle_info *info, int flags )
 /* returns the id of the nearest actor */
 int actor_find_nearest ( int flags )
 {
+	return actor_find_nearest_ex(flags, [](actor_info *){ return true; });
+}
+
+int actor_find_nearest_ex(int flags, std::function<bool(actor_info *)> pred)
+{
 	const struct actor_info *self;
 
 	if ( pool_actor == NULL )
@@ -1395,7 +1403,7 @@ int actor_find_nearest ( int flags )
 	if ( (self = actor_info_get(ACTOR_SELF, 0)) == NULL )
 		return -1;
 
-	const struct actor_info *info;
+	struct actor_info		*info;
 	float					vect[3];
 	float					dist = -1.0f;
 	int						id_nearest = -1;
@@ -1407,6 +1415,9 @@ int actor_find_nearest ( int flags )
 			continue;
 
 		if ( self->base.matrix == info->base.matrix )
+			continue;
+
+		if (!pred(info))
 			continue;
 
 		vect3_vect3_sub( &self->base.matrix[4 * 3], &info->base.matrix[4 * 3], vect );
@@ -2841,7 +2852,15 @@ void vehicle_setColor0 ( vehicle_info *vinfo, int new_color )
 	vinfo->color[0] = new_color;
 	if ( g_SAMP != NULL )
 	{
-		sendSCMEvent( 3, g_Players->pLocalPlayer->sCurrentVehicleID, new_color, vinfo->color[1] );
+		uint16_t sampVeh = g_Players->pLocalPlayer->sCurrentVehicleID;
+		if (!isBadSAMPVehicleID(sampVeh))
+		{
+			sendSCMEvent(3, sampVeh, new_color, vinfo->color[1]);
+			if (g_Vehicles->pSAMP_Vehicle[sampVeh] != nullptr)
+			{
+				g_Vehicles->pSAMP_Vehicle[sampVeh]->byteColor[0] = new_color;
+			}
+		}
 	}
 }
 
@@ -2854,8 +2873,26 @@ void vehicle_setColor1 ( vehicle_info *vinfo, int new_color )
 	vinfo->color[1] = new_color;
 	if ( g_SAMP != NULL )
 	{
-		sendSCMEvent( 3, g_Players->pLocalPlayer->sCurrentVehicleID, vinfo->color[0], new_color );
+		uint16_t sampVeh = g_Players->pLocalPlayer->sCurrentVehicleID;
+		if (!isBadSAMPVehicleID(sampVeh))
+		{
+			sendSCMEvent(3, sampVeh, vinfo->color[0], new_color);
+			if (g_Vehicles->pSAMP_Vehicle[sampVeh] != nullptr)
+			{
+				g_Vehicles->pSAMP_Vehicle[sampVeh]->byteColor[1] = new_color;
+			}
+		}
 	}
+}
+
+RwColor getVehicleColorRGB(unsigned int index)
+{
+	static RwColor *colorTable = nullptr;
+	if (colorTable == nullptr)
+	{
+		memcpy_safe(&colorTable, (void *)0x4C8390, 4);
+	}
+	return colorTable[index];
 }
 
 // ---------------------------------------------------------------------------------------
@@ -2883,11 +2920,11 @@ static int __page_write ( void *_dest, const void *_src, uint32_t len )
 	const uint8_t	*src = (const uint8_t *)_src;
 	DWORD			prot_prev = 0;
 	int				prot_changed = 0;
-	SIZE_T			write_len;
 	int				ret = 1;
 
 	while ( len > 0 )
 	{
+		ret = 1;
 		int page_offset = (int)( (UINT_PTR) dest % page_size );
 		int page_remain = page_size - page_offset;
 		int this_len = len;
@@ -2903,8 +2940,8 @@ static int __page_write ( void *_dest, const void *_src, uint32_t len )
 				prot_changed = 1;
 		}
 
-		if ( !WriteProcessMemory(GetCurrentProcess(), dest, (void *)src, this_len, &write_len) )
-			write_len = 0;
+		if ( ret )
+			memcpy( dest, src, this_len );
 
 		if ( prot_changed )
 		{
@@ -2912,9 +2949,6 @@ static int __page_write ( void *_dest, const void *_src, uint32_t len )
 			if ( !VirtualProtect((void *)dest, this_len, prot_prev, &dummy) )
 				Log( "__page_write() could not restore original permissions for ptr %p", dest );
 		}
-
-		if ( (int)write_len != this_len )
-			ret = 0;
 
 		dest += this_len;
 		src += this_len;
@@ -2931,11 +2965,11 @@ static int __page_read ( void *_dest, const void *_src, uint32_t len )
 	uint8_t		*src = (uint8_t *)_src;
 	DWORD		prot_prev = 0;
 	int			prot_changed = 0;
-	SIZE_T		read_len;
 	int			ret = 1;
 
 	while ( len > 0 )
 	{
+		ret = 1;
 		int page_offset = (int)( (UINT_PTR) src % page_size );
 		int page_remain = page_size - page_offset;
 		int this_len = len;
@@ -2951,20 +2985,16 @@ static int __page_read ( void *_dest, const void *_src, uint32_t len )
 				prot_changed = 1;
 		}
 
-		if ( !ReadProcessMemory(GetCurrentProcess(), src, dest, this_len, &read_len) )
-			read_len = 0;
+		if ( ret )
+			memcpy( dest, src, this_len );
+		else
+			memset( dest, 0, this_len );
 
 		if ( prot_changed )
 		{
 			DWORD	dummy;
 			if ( !VirtualProtect((void *)src, this_len, prot_prev, &dummy) )
 				Log( "__page_read() could not restore original permissions for ptr %p", src );
-		}
-
-		if ( (int)read_len != this_len )
-		{
-			memset( dest + read_len, 0, this_len - read_len );
-			ret = 0;
 		}
 
 		dest += this_len;
@@ -3210,6 +3240,87 @@ size_t strlcat ( char *dst, const char *src, size_t size )
 	return dlen + slen;
 }
 
+bool findstrinstr ( char *text, char *find )
+{
+	char	realtext[256];
+	char	subtext[256];
+	char	*result;
+	char	*next;
+	char	temp;
+	int		i = 0;
+
+	traceLastFunc( "findstrinstr()" );
+
+	// can't find stuff that isn't there unless you are high
+	if ( text == NULL || find == NULL )
+		return false;
+
+	// lower case text ( sizeof()-2 = 1 for array + 1 for termination after while() )
+	while ( text[i] != NULL && i < (sizeof(realtext)-2) )
+	{
+		temp = text[i];
+		if ( isupper(temp) )
+			temp = tolower( temp );
+		realtext[i] = temp;
+		i++;
+	}
+	realtext[i] = 0;
+
+	// replace unwanted characters/spaces with dots
+	i = 0;
+	while ( find[i] != NULL && i < (sizeof(subtext)-2) )
+	{
+		temp = find[i];
+		if ( isupper(temp) )
+			temp = tolower( temp );
+		if ( !isalpha(temp) )
+			temp = '.';
+		subtext[i] = temp;
+		i++;
+	}
+	subtext[i] = 0;
+
+	// use i to count the successfully found text parts
+	i = 0;
+
+	// split and find every part of subtext/find in text
+	result = &subtext[0];
+	while ( *result != NULL )
+	{
+		next = strstr( result, "." );
+		if ( next != NULL )
+		{
+			// more than one non-alphabetic character
+			if ( next == result )
+			{
+				do
+					next++;
+				while ( *next == '.' );
+
+				if ( *next == NULL )
+					return (i != 0);
+				result = next;
+				next = strstr( result, "." );
+				if ( next != NULL )
+					*next = NULL;
+			}
+			else
+				*next = NULL;
+		}
+
+		if ( strstr(realtext, result) == NULL )
+			return false;
+
+		if ( next == NULL )
+			return true;
+
+		i++;
+		result = next + 1;
+	}
+
+	return false;
+}
+
 void *memdup ( const void *src, int len )
 {
 	void	*dest = malloc( len );
@@ -3259,30 +3370,16 @@ uint8_t *hex_to_bin ( const char *str )
 	return sbuf;
 }
 
-D3DCOLOR hex_to_color( const char *str, int len )
+bool hex_is_valid( const std::string& hex )
 {
-	char buf[12];
-	strncpy_s( buf, str, len );
-	D3DCOLOR color = 0x00;
-	byte *colorByteSet = ( byte * ) &color;
-	int stri = 0;
-	for ( int i = sizeof( color ) - 1; i >= 0; i-- )
+	if ( hex.empty() )
+		return false;
+	for ( size_t i = 0, len = hex.length(); i < len; i++ )
 	{
-		if ( i == 3 && len == 6 )
-		{
-			colorByteSet[3] = 0xFF;
-		}
-		else
-		{
-			signed char bh = hex_to_dec( buf[stri++] );
-			signed char bl = hex_to_dec( buf[stri++] );
-			if ( bh != -1 && bl != -1 )
-			{
-				colorByteSet[i] = bl | ( bh << 4 );
-			}
-		}
+		if ( hex_to_dec( hex[i] ) == -1 )
+			return false;
 	}
-	return color;
+	return true;
 }
 
 // new functions related to R* classes //

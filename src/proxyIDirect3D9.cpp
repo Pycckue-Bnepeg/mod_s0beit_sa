@@ -2,9 +2,9 @@
 
 	PROJECT:		mod_sa
 	LICENSE:		See LICENSE in the top level directory
-	COPYRIGHT:		Copyright we_sux, FYP
+	COPYRIGHT:		Copyright we_sux, BlastHack
 
-	mod_sa is available from http://code.google.com/p/m0d-s0beit-sa/
+	mod_sa is available from https://github.com/BlastHackNet/mod_s0beit_sa/
 
 	mod_sa is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@ proxyIDirect3D9::proxyIDirect3D9 ( IDirect3D9 *pOriginal )
 
 	// to allow computers with Aero to disable so the window doesn't get minimized by
 	// other windows switching off Aero.
-	Sleep(1000);
+	// we don't need this since there is fix for windows aero
+	// Sleep(1000);
 }
 
 proxyIDirect3D9::~proxyIDirect3D9 ( void )
@@ -153,7 +154,7 @@ HRESULT __stdcall proxyIDirect3D9::CreateDevice ( UINT Adapter, D3DDEVTYPE Devic
 
 	ulFullScreenRefreshRate = pPresentationParameters->FullScreen_RefreshRateInHz;
 
-	if ( set.window_mode )
+	if ( set.window_mode && *(byte*)0x746225 != 0x90)
 	{
 		int x, y;
 		x = GetSystemMetrics( SM_CXSCREEN );

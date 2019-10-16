@@ -6,8 +6,8 @@
 !define MUI_INSTFILESPAGE_PROGRESSBAR colored
 !define NAME 'mod_sa'
 !define MP 'SA-MP'
-!define MP_VERSION 'v0.3z R1'
-!define VERSION 'v4.3.3.3'
+!define MP_VERSION 'v0.3.7 R1'
+!define VERSION 'v4.4.1.3'
 
 ; create output directory if it doesn't exist
 !system 'mkdir "..\_distro_installers\"'
@@ -16,7 +16,7 @@ Name "${NAME} ${VERSION}"
 OutFile "..\_distro_installers\${NAME}.${VERSION}.${MP}.${MP_VERSION}.Setup.exe"
 SetCompressor /SOLID lzma
 CRCCheck force
-BrandingText "Visit ${NAME} at Google Code, Click Here"
+BrandingText "Visit ${NAME} at GitHub, Click Here"
 CompletedText "${NAME} ${VERSION} for ${MP} ${MP_VERSION} setup finished"
 ShowInstDetails show
 ShowUninstDetails show
@@ -46,12 +46,12 @@ FunctionEnd
 ; branding url
 !define MUI_CUSTOMFUNCTION_GUIINIT onGUIInit
 Function onGUIInit
- BrandingURL::Set /NOUNLOAD "0" "0" "200" "http://code.google.com/p/mod-s0beit-sa/"
+ BrandingURL::Set /NOUNLOAD "0" "0" "200" "https://github.com/BlastHackNet/mod_s0beit_sa/"
 FunctionEnd
 
 ; main installation screen variables
 Page directory
-DirText "Welcome to the installer for ${NAME} ${VERSION} for ${MP} ${MP_VERSION}.$\r$\n$\r$\nCheck out ${NAME} at Google Code for the lastest versions and information.  Just click the link on the bottom left." "Please select your GTA San Andreas directory."
+DirText "Welcome to the installer for ${NAME} ${VERSION} for ${MP} ${MP_VERSION}.$\r$\n$\r$\nCheck out ${NAME} at GitHub for the lastest versions and information.  Just click the link on the bottom left." "Please select your GTA San Andreas directory."
 InstallDir "$PROGRAMFILES\Rockstar Games\GTA San Andreas\"
 InstallDirRegKey HKLM "SOFTWARE\Rockstar Games\GTA San Andreas\Installation" ExePath
 Function .onVerifyInstDir
@@ -118,7 +118,6 @@ Section "Install" SecDummy
 	File ..\bin\d3d9.dll
 	SetOutPath "$INSTDIR\mod_sa"
 	File ..\bin\mod_sa\mod_sa.raw
-	File ..\bin\mod_sa\mod_sa_ChangeLog.txt
 	File ..\bin\mod_sa\speedo.png
 	File ..\bin\mod_sa\needle.png
 

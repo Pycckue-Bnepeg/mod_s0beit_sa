@@ -867,6 +867,7 @@
     <ClInclude Include="cheat_samp.h">
       <Filter>Cheat</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="game_sa\C3DMarkerSA.cpp">
